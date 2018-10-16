@@ -16,10 +16,15 @@ jobs:
           name: Wait for db
           command: dockerize -wait tcp://localhost:5432 -timeout 1m
       - run:
+          name: Install poetry
+          command: |
+            pip3 install poetry
+            poetry config settings.virtualenvs.create false
+      - run:
           command: |
             python3 -m venv venv
             . venv/bin/activate
-            poetry config settings.virtualenvs.create false
+
             poetry install
       - save_cache:
           key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
@@ -38,8 +43,42 @@ jobs:
           path: test-reports/
           destination: tr1
 
+  publish:
+    working_directory: ~/circleci
+    docker:
+      - image: circleci/python:3.7.0
+        environment:
+          REPO: anapr
+    steps:
+      - setup_remote_docker
+      - checkout
+      - run:
+          name: Install poetry
+          command: |
+            pip3 install poetry
+            poetry config settings.virtualenvs.create false
+      - run:
+          name: Bump version
+          command: |
+            python3 deploy/bumpversion.py
+      - run:
+          name: Build
+          command: |
+            poetry build
+      - run:
+          name: Publish to pypi
+          command: |
+            poetry publish --username $PYPI_USERNAME --password $PYPI_PASSWORD
+
+
 workflows:
   version: 2
-  build-then-deploy:
+  build-then-publish:
     jobs:
       - build
+      - publish:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master

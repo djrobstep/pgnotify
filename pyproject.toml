@@ -2,7 +2,7 @@
 name = "pgnotify"
 version = "0.1"
 description = ""
-authors = ["Robert Lechte <robertlechte@gmail.com>"]
+authors = [ "Robert Lechte <robertlechte@gmail.com>",]
 license = "Unlicense"
 
 [tool.poetry.dependencies]
