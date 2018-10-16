@@ -38,3 +38,4 @@ nosetests.xml
 
 .cache
 pyproject.lock
+.pytest_cache

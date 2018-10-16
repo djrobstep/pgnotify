@@ -11,14 +11,14 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps1-{{ .Branch }}-{{ checksum "pyproject.toml" }}
       - run:
           name: Wait for db
           command: dockerize -wait tcp://localhost:5432 -timeout 1m
       - run:
           name: Install poetry
           command: |
-            pip3 install poetry
+            sudo pip3 install poetry
             poetry config settings.virtualenvs.create false
       - run:
           command: |
@@ -27,7 +27,7 @@ jobs:
 
             poetry install
       - save_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps1-{{ .Branch }}-{{ checksum "pyproject.toml" }}
           paths:
             - "venv"
       - run:
@@ -47,27 +47,25 @@ jobs:
     working_directory: ~/circleci
     docker:
       - image: circleci/python:3.7.0
-        environment:
-          REPO: anapr
     steps:
       - setup_remote_docker
       - checkout
+      - restore_cache:
+          key: deps1-{{ .Branch }}-{{ checksum "pyproject.toml" }}
       - run:
-          name: Install poetry
+          name: Install poetry, deps
           command: |
-            pip3 install poetry
+            sudo pip3 install poetry
             poetry config settings.virtualenvs.create false
+            python3 -m venv venv
+            . venv/bin/activate
+            poetry install
       - run:
-          name: Bump version
+          name: Bump version, build, install
           command: |
-            python3 deploy/bumpversion.py
-      - run:
-          name: Build
-          command: |
+            . venv/bin/activate
+            python deploy/vbump.py
             poetry build
-      - run:
-          name: Publish to pypi
-          command: |
             poetry publish --username $PYPI_USERNAME --password $PYPI_PASSWORD
 
 
