@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "pgnotify"
+version = "0.1"
+description = ""
+authors = ["Robert Lechte <robertlechte@gmail.com>"]
+license = "Unlicense"
+
+[tool.poetry.dependencies]
+python = "*"
+psycopg2-binary = "*"
+logx = "*"
+
+[tool.poetry.dev-dependencies]
+sqlbag = "*"
+pytest = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+pytest-sugar = "*"
+tox = "*"
+flake8 = "*"
+twine = "*"
+wheel = "*"
+isort = "*"
+black = "*"
