@@ -1,9 +1,13 @@
 [tool.poetry]
 name = "pgnotify"
 version = "0.1"
-description = ""
 authors = [ "Robert Lechte <robertlechte@gmail.com>",]
 license = "Unlicense"
+readme = "README.md"
+description = "Easily LISTEN to PostgreSQL NOTIFY notifications"
+
+repository = "https://github.com/djrobstep/pgnotify"
+homepage = "https://github.com/djrobstep/pgnotify"
 
 [tool.poetry.dependencies]
 python = "*"
