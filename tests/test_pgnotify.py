@@ -11,6 +11,8 @@ from sqlbag import S
 from pgnotify import await_pg_notifications
 from pgnotify.notify import get_dbapi_connection
 
+SIGNALS_TO_HANDLE = [signal.SIGINT]
+
 
 def test_get_connection(db):
     a = db
@@ -27,37 +29,30 @@ def test_get_connection(db):
 
 
 def test_pg_notify(db):
-    expected = None  # timeout
+    for n in await_pg_notifications(
+        db,
+        ["hello", "hello2"],
+        timeout=0.01,
+        yield_on_timeout=True,
+        handle_signals=SIGNALS_TO_HANDLE,
+    ):
+        if n is None:
+            with S(db) as s:
+                s.execute("notify hello, 'here is my message'")
 
-    if True:
-        for n in await_pg_notifications(
-            db,
-            ["hello", "hello2"],
-            timeout=0.01,
-            yield_on_timeout=True,
-            handle_keyboardinterrupt=True,
-        ):
-            if n is None:
-                assert expected is None
-                with S(db) as s:
-                    s.execute("notify hello, 'here is my message'")
+        elif isinstance(n, int):
+            sig = signal.Signals(n)
+            assert sig.name == "SIGINT"
+            assert n == signal.SIGINT
+            break
 
-            elif n is False:
-                assert expected is False
-                break
-
-            else:
-                assert n.channel == "hello"
-                assert n.payload == "here is my message"
-                os.kill(os.getpid(), signal.SIGINT)
-                expected = False
+        else:
+            assert n.channel == "hello"
+            assert n.payload == "here is my message"
+            os.kill(os.getpid(), signal.SIGINT)
 
     with raises(KeyboardInterrupt):
         for n in await_pg_notifications(
-            db,
-            ["hello"],
-            timeout=0.1,
-            yield_on_timeout=True,
-            handle_keyboardinterrupt=False,
+            db, "hello", timeout=0.1, yield_on_timeout=True
         ):
             os.kill(os.getpid(), signal.SIGINT)

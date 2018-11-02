@@ -25,4 +25,4 @@ flake8 = "*"
 twine = "*"
 wheel = "*"
 isort = "*"
-black = "*"
+black = {version = "*", python = ">=3.6"}

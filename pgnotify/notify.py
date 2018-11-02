@@ -5,9 +5,9 @@ import fcntl
 import os
 import select
 import signal
+import sys
 
 import psycopg2
-import six
 from logx import log
 from six import string_types
 
@@ -22,14 +22,14 @@ def get_wakeup_fd():
     return pipe_r
 
 
-def signal_handler(signal, frame):
+def empty_signal_handler(signal, frame):
     pass
 
 
 try:
     import sqlalchemy
-except ImportError:
-    sqlalchemy = None  # flake8: noqa
+except ImportError:  # pragma: no cover
+    sqlalchemy = None
 
 if sqlalchemy:
     from sqlalchemy.engine.base import Engine
@@ -57,9 +57,9 @@ def quote_table_name(name):
 def await_pg_notifications(
     dburi_or_sqlaengine_or_dbapiconnection,
     channels,
-    timeout=3,
+    timeout=4,
     yield_on_timeout=False,
-    handle_keyboardinterrupt=False,
+    handle_signals=None,
 ):
     """Subscribe to PostgreSQL notifications, and handle them
     in infinite-loop style.
@@ -85,9 +85,13 @@ def await_pg_notifications(
     c.execute(listens)
     c.close()
 
+    signals_to_handle = handle_signals or []
+    original_handlers = {}
+
     try:
-        if handle_keyboardinterrupt:
-            original_handler = signal.signal(signal.SIGINT, signal_handler)
+        if signals_to_handle:
+            for s in signals_to_handle:
+                original_handlers[s] = signal.signal(s, empty_signal_handler)
             wakeup = get_wakeup_fd()
             listen_on = [cc, wakeup]
         else:
@@ -115,13 +119,22 @@ def await_pg_notifications(
                         )
                         yield notify
 
-                if handle_keyboardinterrupt and wakeup in r:
-                    yield False
+                if wakeup in r:
+                    signal_byte = os.read(wakeup, 1)
+                    signal_int = int.from_bytes(signal_byte, sys.byteorder)
+                    sig = signal.Signals(signal_int)
+                    signal_name = signal.Signals(sig).name
+
+                    log.info(f"woken from slumber by signal: {signal_name}")
+                    yield signal_int
 
             except select.error as e:
                 e_num, e_message = e
                 if e_num == errno.EINTR:
                     log.error("EINTR happened during select")
     finally:
-        if handle_keyboardinterrupt:
-            signal.signal(signal.SIGINT, original_handler)
+        if signals_to_handle:
+            for s in signals_to_handle:
+                signal_name = signal.Signals(s).name
+                log.debug(f"restoring original handler for: {signal_name}")
+                signal.signal(s, original_handlers[s])

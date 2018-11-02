@@ -1,19 +1,24 @@
-from sqlalchemy import create_engine
+import signal
 
-from pgnotify import await_pg_notifications
+from pgnotify import await_pg_notifications, get_dbapi_connection
 
 CONNECT = "postgresql:///example"
-CONNECT = create_engine(CONNECT)
+e = get_dbapi_connection(CONNECT)
+
+
+SIGNALS_TO_HANDLE = [signal.SIGINT, signal.SIGTERM]
 
 for n in await_pg_notifications(
-    CONNECT,
+    e,
     ["hello", "hello2"],
-    timeout=1,
+    timeout=10,
     yield_on_timeout=True,
-    handle_keyboardinterrupt=True,
+    handle_signals=SIGNALS_TO_HANDLE,
 ):
-
-    if n is False:
+    if isinstance(n, int):
+        sig = signal.Signals(n)
+        if n in SIGNALS_TO_HANDLE:
+            print(f"handling {sig.name}")
         print("interrupted, stopping")
         break
 
