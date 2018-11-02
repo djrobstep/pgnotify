@@ -2,6 +2,7 @@
 
 LISTEN to and process NOTIFY events with a simple `for` loop, like so:
 
+```python
     from pgnotify import await_pg_notifications
 
     for notification in await_pg_notifications(
@@ -10,39 +11,49 @@ LISTEN to and process NOTIFY events with a simple `for` loop, like so:
 
         print(notification.channel)
         print(notification.payload)
+```
 
 You can also handle timeouts and signals, as in this more fully-fleshed example:
 
-    import signal
+```python
+import signal
 
-    from pgnotify import await_pg_notifications, get_dbapi_connection
+from pgnotify import await_pg_notifications, get_dbapi_connection
 
-    CONNECT = "postgresql:///example"
-    e = get_dbapi_connection(CONNECT)
+# the first parameter of the await_pg_notifications
+# loop is a dbapi connection in autocommit mode
+CONNECT = "postgresql:///example"
 
-    SIGNALS_TO_HANDLE = [signal.SIGINT, signal.SIGTERM]
+# use this convenient method to create the right connection
+# from a database URL
+e = get_dbapi_connection(CONNECT)
 
-      for n in await_pg_notifications(
-          e,
-          ["hello", "hello2"],
-          timeout=10,
-          yield_on_timeout=True,
-          handle_signals=SIGNALS_TO_HANDLE,
-      ):
-          # when n is an integer, a signal has been has been caught for further handling.
-          if isinstance(n, int):
-              sig = signal.Signals(n)
-              if n in SIGNALS_TO_HANDLE:
-                  print(f"handling {sig.name}")
-              print("interrupted, stopping")
-              break
+SIGNALS_TO_HANDLE = [signal.SIGINT, signal.SIGTERM]
 
-          # if `yield_on_timeout` has been set to True, the loop returns None after the timeout has been reached
-          elif n is None:
-              print("timeout, continuing")
+for n in await_pg_notifications(
+    e,
+    ["hello", "hello2"],
+    timeout=10,
+    yield_on_timeout=True,
+    handle_signals=SIGNALS_TO_HANDLE,
+):
+    # the integer code of the signal is yielded on each
+    # occurrence of a handled signal
+    if isinstance(n, int):
+        sig = signal.Signals(n)
+        if n in SIGNALS_TO_HANDLE:
+            print(f"handling {sig.name}")
+        print("interrupted, stopping")
+        break
 
-          # handle the actual notify occurrences here
-          else:
-              print((n.pid, n.channel, n.payload))
+    # the `yield_on_timeout` option makes the
+    # loop yield `None` on timeout
+    elif n is None:
+        print("timeout, continuing")
+
+    # handle the actual notify occurrences here
+    else:
+        print((n.pid, n.channel, n.payload))
+```
 
 Further documentation to come.
