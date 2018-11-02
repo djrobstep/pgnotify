@@ -53,9 +53,7 @@ for n in await_pg_notifications(
     # occurrence of a handled signal
     if isinstance(n, int):
         sig = signal.Signals(n)
-        if n in SIGNALS_TO_HANDLE:
-            print(f"handling {sig.name}")
-        print("interrupted, stopping")
+        print(f"handling {sig.name}, stopping")
         break
 
     # the `yield_on_timeout` option makes the
