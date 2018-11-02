@@ -1,16 +1,24 @@
-# pgnotify: Easily LISTEN to PostgreSQL NOTIFY notifications
+# pgnotify: A python library to easily LISTEN to PostgreSQL NOTIFY notifications
+
+## Install
+
+Installable with any python package manager from the python package index, eg:
+
+```shell
+pip install pgnotify
+```
 
 LISTEN to and process NOTIFY events with a simple `for` loop, like so:
 
 ```python
-    from pgnotify import await_pg_notifications
+from pgnotify import await_pg_notifications
 
-    for notification in await_pg_notifications(
-            'postgresql:///nameofdatabase',
-            ['channel1', 'channel2']):
+for notification in await_pg_notifications(
+        'postgresql:///example',
+        ['channel1', 'channel2']):
 
-        print(notification.channel)
-        print(notification.payload)
+    print(notification.channel)
+    print(notification.payload)
 ```
 
 You can also handle timeouts and signals, as in this more fully-fleshed example:
