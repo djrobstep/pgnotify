@@ -54,9 +54,18 @@ def quote_table_name(name):
     return '"{}"'.format(name)
 
 
+def start_listening(connection, channels):
+    names = (quote_table_name(each) for each in channels)
+    listens = "; ".join(["listen {}".format(n) for n in names])
+
+    c = connection.cursor()
+    c.execute(listens)
+    c.close()
+
+
 def await_pg_notifications(
     dburi_or_sqlaengine_or_dbapiconnection,
-    channels,
+    channels=None,
     timeout=4,
     yield_on_timeout=False,
     handle_signals=None,
@@ -75,15 +84,11 @@ def await_pg_notifications(
 
     cc = get_dbapi_connection(dburi_or_sqlaengine_or_dbapiconnection)
 
-    if isinstance(channels, string_types):
-        channels = [channels]
+    if channels:
+        if isinstance(channels, string_types):
+            channels = [channels]
 
-    names = (quote_table_name(each) for each in channels)
-    listens = "; ".join(["listen {}".format(n) for n in names])
-
-    c = cc.cursor()
-    c.execute(listens)
-    c.close()
+        start_listening(cc, channels)
 
     signals_to_handle = handle_signals or []
     original_handlers = {}
@@ -107,6 +112,15 @@ def await_pg_notifications(
                     if yield_on_timeout:
                         yield None
 
+                if wakeup in r:
+                    signal_byte = os.read(wakeup, 1)
+                    signal_int = int.from_bytes(signal_byte, sys.byteorder)
+                    sig = signal.Signals(signal_int)
+                    signal_name = signal.Signals(sig).name
+
+                    log.info(f"woken from slumber by signal: {signal_name}")
+                    yield signal_int
+
                 if cc in r:
                     cc.poll()
 
@@ -119,19 +133,12 @@ def await_pg_notifications(
                         )
                         yield notify
 
-                if wakeup in r:
-                    signal_byte = os.read(wakeup, 1)
-                    signal_int = int.from_bytes(signal_byte, sys.byteorder)
-                    sig = signal.Signals(signal_int)
-                    signal_name = signal.Signals(sig).name
-
-                    log.info(f"woken from slumber by signal: {signal_name}")
-                    yield signal_int
-
             except select.error as e:
                 e_num, e_message = e
                 if e_num == errno.EINTR:
-                    log.error("EINTR happened during select")
+                    log.debug("EINTR happened during select")
+                else:
+                    raise
     finally:
         if signals_to_handle:
             for s in signals_to_handle:
