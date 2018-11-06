@@ -63,12 +63,17 @@ def start_listening(connection, channels):
     c.close()
 
 
+def log_notification(_n):
+    log.debug("NOTIFY: {}, {}, {}".format(_n.pid, _n.channel, _n.payload))
+
+
 def await_pg_notifications(
     dburi_or_sqlaengine_or_dbapiconnection,
     channels=None,
-    timeout=4,
+    timeout=5,
     yield_on_timeout=False,
     handle_signals=None,
+    notifications_as_list=False,
 ):
     """Subscribe to PostgreSQL notifications, and handle them
     in infinite-loop style.
@@ -81,7 +86,7 @@ def await_pg_notifications(
     If you've enabled 'handle_keyboardinterrupt', yields False on
     interrupt.
     """
-
+    timeout_is_callable = callable(timeout)
     cc = get_dbapi_connection(dburi_or_sqlaengine_or_dbapiconnection)
 
     if channels:
@@ -104,7 +109,14 @@ def await_pg_notifications(
 
         while True:
             try:
-                r, w, x = select.select(listen_on, [], [], timeout)
+                if timeout_is_callable:
+                    _timeout = timeout()
+                    log.debug("dynamic timeout of {_timeout} seconds")
+                else:
+                    _timeout = timeout
+                _timeout = max(0, _timeout)
+
+                r, w, x = select.select(listen_on, [], [], _timeout)
                 log.debug("select call awoken, returned: {}".format((r, w, x)))
 
                 if (r, w, x) == ([], [], []):
@@ -124,14 +136,19 @@ def await_pg_notifications(
                 if cc in r:
                     cc.poll()
 
+                    nlist = []
                     while cc.notifies:
                         notify = cc.notifies.pop()
-                        log.debug(
-                            "NOTIFY: {}, {}, {}".format(
-                                notify.pid, notify.channel, notify.payload
-                            )
-                        )
-                        yield notify
+                        nlist.append(notify)
+
+                    if notifications_as_list:
+                        for n in nlist:
+                            log_notification(n)
+                        yield nlist
+                    else:
+                        for n in nlist:
+                            log_notification(n)
+                            yield n
 
             except select.error as e:
                 e_num, e_message = e

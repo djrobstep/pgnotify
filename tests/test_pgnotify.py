@@ -56,3 +56,39 @@ def test_pg_notify(db):
             db, "hello", timeout=0.1, yield_on_timeout=True
         ):
             os.kill(os.getpid(), signal.SIGINT)
+
+
+def test_dynamic_timeout(db):
+    def get_timeout():
+        return -1
+
+    for n in await_pg_notifications(
+        db,
+        ["hello", "hello2"],
+        timeout=get_timeout,
+        yield_on_timeout=True,
+        notifications_as_list=True,
+        handle_signals=SIGNALS_TO_HANDLE,
+    ):
+        if n is None:
+            with S(db) as s:
+                s.execute("notify hello, 'here is my message'")
+
+        elif isinstance(n, int):
+            sig = signal.Signals(n)
+            assert sig.name == "SIGINT"
+            assert n == signal.SIGINT
+            break
+
+        else:
+            assert len(n) == 1
+            _n = n[0]
+            assert _n.channel == "hello"
+            assert _n.payload == "here is my message"
+            os.kill(os.getpid(), signal.SIGINT)
+
+    with raises(KeyboardInterrupt):
+        for n in await_pg_notifications(
+            db, "hello", timeout=0.1, yield_on_timeout=True
+        ):
+            os.kill(os.getpid(), signal.SIGINT)
