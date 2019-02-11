@@ -106,6 +106,7 @@ def await_pg_notifications(
             listen_on = [cc, wakeup]
         else:
             listen_on = [cc]
+            wakeup = None
 
         while True:
             try:
@@ -124,7 +125,7 @@ def await_pg_notifications(
                     if yield_on_timeout:
                         yield None
 
-                if wakeup in r:
+                if wakeup is not None and wakeup in r:
                     signal_byte = os.read(wakeup, 1)
                     signal_int = int.from_bytes(signal_byte, sys.byteorder)
                     sig = signal.Signals(signal_int)

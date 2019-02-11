@@ -14,7 +14,6 @@ stest:
 	$(tcommand) $(tmessy) $(targs)
 
 clean:
-	git clean -fXd
 	find . -name \*.pyc -delete
 
 fmt:
