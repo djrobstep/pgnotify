@@ -162,5 +162,5 @@ def await_pg_notifications(
             for s in signals_to_handle:
                 if s in original_handlers:
                     signal_name = signal.Signals(s).name
-                    log.debug(f"restoring original handler for: {signal_name}")
+                    log.debug("restoring original handler for: {}".format(signal_name))
                     signal.signal(s, original_handlers[s])
