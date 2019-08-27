@@ -131,7 +131,7 @@ def await_pg_notifications(
                     sig = signal.Signals(signal_int)
                     signal_name = signal.Signals(sig).name
 
-                    log.info(f"woken from slumber by signal: {signal_name}")
+                    log.info("woken from slumber by signal: {}".format(signal_name))
                     yield signal_int
 
                 if cc in r:
