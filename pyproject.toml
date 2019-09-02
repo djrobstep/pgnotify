@@ -25,3 +25,7 @@ twine = "*"
 wheel = "*"
 isort = "*"
 black = {python=">3.6", version=">=18.9b0", allow_prereleases=true}
+
+[build-system]
+requires = ["poetry"]
+build-backend = "poetry.masonry.api"
