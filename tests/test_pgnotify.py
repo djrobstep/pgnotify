@@ -2,13 +2,14 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import os
 import signal
+from unittest import mock
 
 import psycopg2
 from pytest import raises
 from sqlalchemy import create_engine
 from sqlbag import S
 
-from pgnotify import await_pg_notifications
+from pgnotify import await_pg_notifications, notify
 from pgnotify.notify import get_dbapi_connection
 
 SIGNALS_TO_HANDLE = [signal.SIGINT]
@@ -92,3 +93,14 @@ def test_dynamic_timeout(db):
             db, "hello", timeout=0.1, yield_on_timeout=True
         ):
             os.kill(os.getpid(), signal.SIGINT)
+
+
+@mock.patch("pgnotify.get_dbapi_connection")
+def test_send_notify(get_dbapi_connection_mock):
+    mock_db = mock.Mock()
+    assert notify(mock_db, "hello", "test") is None
+    get_dbapi_connection_mock.assert_called_once_with(mock_db)
+    connection_mock = get_dbapi_connection_mock.return_value
+    connection_mock.cursor.assert_called_once_with()
+    cursor = connection_mock.cursor.return_value
+    cursor.execute.assert_called_once_with("SELECT pg_notify('hello', 'test');")

@@ -131,7 +131,7 @@ def await_pg_notifications(
                     sig = signal.Signals(signal_int)
                     signal_name = signal.Signals(sig).name
 
-                    log.info(f"woken from slumber by signal: {signal_name}")
+                    log.info("woken from slumber by signal: {}".format(signal_name))
                     yield signal_int
 
                 if cc in r:
@@ -162,5 +162,5 @@ def await_pg_notifications(
             for s in signals_to_handle:
                 if s in original_handlers:
                     signal_name = signal.Signals(s).name
-                    log.debug(f"restoring original handler for: {signal_name}")
+                    log.debug("restoring original handler for: {}".format(signal_name))
                     signal.signal(s, original_handlers[s])
