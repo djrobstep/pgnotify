@@ -13,6 +13,7 @@ homepage = "https://github.com/djrobstep/pgnotify"
 python = "*"
 psycopg2-binary = "*"
 logx = "*"
+six = "*"
 
 [tool.poetry.dev-dependencies]
 sqlbag = "*"
@@ -24,4 +25,4 @@ flake8 = "*"
 twine = "*"
 wheel = "*"
 isort = "*"
-black = {python=">3.6", version=">=18.9b0", allow_prereleases=true}
+black = {python=">=3.6", version=">=18.9b0"}
